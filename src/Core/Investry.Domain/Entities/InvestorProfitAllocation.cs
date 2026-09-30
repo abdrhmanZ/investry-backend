@@ -1,0 +1,27 @@
+﻿namespace Investry.Domain.Entities
+{
+    // هنسجل فيه نصيب كل مستثمر من كل مره هنوزع فيها ارباح
+    public class InvestorProfitAllocation
+    {
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        public Guid ProfitDistributionId { get; set; }
+        public ProfitDistribution ProfitDistribution { get; set; }
+
+        public Guid InvestorId { get; set; }
+        public Investor Investor { get; set; }
+
+        public Guid InvestmentId { get; set; }
+        public Investment Investment { get; set; }
+
+        // نسبة مسهاهمة المستثمر من رأس المال
+        public decimal CapitalRatio { get; set; }
+
+        // نصيب المستثمر من الربح في الفترة دي
+        public decimal AllocatedProfit { get; set; }
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public bool IsDeleted { get; set; } = false;
+    }
+}

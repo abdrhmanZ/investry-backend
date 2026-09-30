@@ -1,0 +1,19 @@
+﻿using Investry.Application.Common;
+using Investry.Application.Contracts.Identity;
+using MediatR;
+
+namespace Investry.Application.Features.Authentication.Commands.ForgotPassword
+{
+    public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand, Result<string>>
+    {
+        private readonly IAuthService _authService;
+        public ForgotPasswordCommandHandler(IAuthService authService)
+        {
+            _authService = authService;
+        }
+        public async Task<Result<string>> Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
+        {
+            return await _authService.ForgotPasswordAsync(request.Email); 
+        }
+    }
+}

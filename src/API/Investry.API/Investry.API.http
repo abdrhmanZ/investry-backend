@@ -1,0 +1,6 @@
+@Investry.API_HostAddress = http://localhost:5258
+
+GET {{Investry.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
