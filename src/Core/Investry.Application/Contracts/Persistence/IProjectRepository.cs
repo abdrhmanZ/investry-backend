@@ -2,6 +2,8 @@ using Investry.Application.Features.Admin.Queries.GetAdminProjects;
 using Investry.Application.Features.Projects.Queries.GetAllProjects;
 using Investry.Application.Features.Projects.Queries.GetFounderProjects;
 using Investry.Application.Features.Projects.Queries.GetProjectDetails;
+using Investry.Application.Features.Projects.Queries.SearchProjects;
+using Investry.Application.Common.Models;
 using Investry.Domain.Entities;
 using Investry.Domain.Enums;
 
@@ -17,6 +19,7 @@ namespace Investry.Application.Contracts.Persistence
         // 
         Task<IReadOnlyList<FounderProjectDto>> GetProjectsByFounderIdAsync(Guid founderId);
         Task<IReadOnlyList<ProjectSummaryDto>> GetAllProjectsSummaryAsync();
+        Task<PagedResult<ProjectSummaryDto>> SearchProjectsAsync(SearchProjectsQuery request, CancellationToken cancellationToken);
         Task<IReadOnlyList<AdminProjectDto>> GetAdminProjectsAsync(ProjectStatus? status);
         Task<ProjectDetailsDto?> GetProjectDetailsAsync(Guid projectId);
         Task<Project?> GetByIdAsyncWithIgnoreFilter(Guid id);

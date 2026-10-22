@@ -37,6 +37,28 @@ Environment variables use double underscores, for example `Didit__CallbackUrl`. 
 
 The frontend is separate. `Frontend:BaseUrl` defaults to `http://localhost:5173` for email and checkout links. The seeded sample users have no usable passwords; register your own accounts. Provider-backed flows require configured test accounts and were not exercised against live services in this copy.
 
+## Search projects
+
+`GET /api/Projects/search` searches published projects without requiring sign-in. Filters are combined, and deleted projects are excluded. Results are ordered newest first, with project ID breaking ties between identical creation dates.
+
+```http
+GET /api/Projects/search?search=solar&fundingModel=Equity&page=1&pageSize=12
+```
+
+| Parameter | Behavior |
+| --- | --- |
+| `search` | Substring in the title or short description; up to 200 characters. Surrounding whitespace is trimmed; a blank search applies no text filter. Case sensitivity follows the SQL Server collation. |
+| `categoryId` | Optional category GUID. A project matches if it belongs to that category. |
+| `fundingModel` | Optional `Reward`, `Equity` or `Mudarabah`. |
+| `page` | Starts at 1; defaults to 1. |
+| `pageSize` | From 1 to 50; defaults to 12. |
+
+The response's `data` contains `items`, `totalCount`, `page`, `pageSize`, `totalPages`, `hasNextPage` and `hasPreviousPage`. The count includes all matching projects before pagination. An empty search result returns HTTP 200 with an empty `items` array; a page beyond the last page also retains the matching total count.
+
+Invalid filters return HTTP 400. For example, `GET /api/Projects/search?pageSize=51` returns a validation error with code `PageSize`; reduce the size to at most 50. Page offsets above the supported integer range are rejected with code `Page`.
+
+The existing `GET /api/Projects/all-projects` still returns its original unpaginated list for existing frontend clients. Search uses the existing SQL Server queries and DTOs, with no new packages or database migrations.
+
 ## Verify
 
 ```powershell
@@ -44,4 +66,4 @@ dotnet build Investry.sln --configuration Release
 dotnet test Investry.sln --configuration Release
 ```
 
-Regression tests cover deposit matching and repeat delivery, paid Stripe events, investment eligibility and Mudarabah ownership. Existing nullable-reference warnings remain. This is a graduation project maintained for portfolio review, with no production deployment claim.
+Regression tests cover deposit matching and repeat delivery, paid Stripe events, investment eligibility, Mudarabah ownership, and project-search validation and result enrichment. Existing nullable-reference warnings remain. This is a graduation project maintained for portfolio review, with no production deployment claim.
