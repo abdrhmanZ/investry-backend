@@ -70,7 +70,11 @@ namespace Investry.API.Controllers
         [HttpGet("{id}/details")]
         public async Task<IActionResult> GetProject(Guid id)
         {
-            var query = new GetProjectDetailsQuery(id);
+            var query = new GetProjectDetailsQuery(id)
+            {
+                UserId = User.Identity?.IsAuthenticated == true ? User.FindFirstValue(CustomClaimTypes.Uid) : null,
+                IsAdministrator = User.IsInRole("Administrator")
+            };
             return (await _mediator.Send(query)).ToApiResponse();
         }
 

@@ -1,7 +1,7 @@
 ﻿using Investry.Application.Common;
 using Investry.Application.Contracts.Identity;
 using Investry.Application.Contracts.Persistence;
-using Investry.Application.Features.Projects.Commands.CreateProject;
+using Investry.Domain.Enums;
 using MediatR;
 
 namespace Investry.Application.Features.Projects.Queries.GetProjectDetails
@@ -21,9 +21,14 @@ namespace Investry.Application.Features.Projects.Queries.GetProjectDetails
             var project = await _unitOfWork.ProjectRepository.GetProjectDetailsAsync(request.ProjectId);
 
             if (project is null)
-                return Result<ProjectDetailsDto>.Failure(new List<Error> { new Error("ProjectNotFound", "The specified project was not found.", ErrorType.NotFound) });
+                return ProjectNotFound();
 
             var founder = await _unitOfWork.FounderRepository.GetByIdAsync(project.FounderId);
+            var canPreview = request.UserId != null
+                && (request.IsAdministrator || founder?.UserId == request.UserId);
+            if (!IsPublicProject(project.ProjectStatus) && !canPreview)
+                return ProjectNotFound();
+
             if (founder != null)
             {
                 var userNames = await _identityService.GetUserNamesByIdsAsync(new List<string> { founder.UserId });
@@ -35,5 +40,15 @@ namespace Investry.Application.Features.Projects.Queries.GetProjectDetails
 
             return Result<ProjectDetailsDto>.Success(project);
         }
+
+        private static bool IsPublicProject(string status)
+            => status is nameof(ProjectStatus.Published) or nameof(ProjectStatus.FundingClosed)
+                or nameof(ProjectStatus.Completed) or nameof(ProjectStatus.Successful) or nameof(ProjectStatus.Failed);
+
+        private static Result<ProjectDetailsDto> ProjectNotFound()
+            => Result<ProjectDetailsDto>.Failure(new List<Error>
+            {
+                new Error("ProjectNotFound", "The specified project was not found.", ErrorType.NotFound)
+            });
     }
 }
