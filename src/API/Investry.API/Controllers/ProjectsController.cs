@@ -1,7 +1,9 @@
 ﻿  using AutoMapper;
 using Investry.API.Common.Extensions;
+using Investry.API.Common;
 using Investry.API.DTOs.Requests;
 using Investry.Application.Common;
+using Investry.Application.Common.Models;
 using Investry.Application.Constants;
 using Investry.Application.Features.Projects.Commands.ActivateMudarabah;
 using Investry.Application.Features.Projects.Commands.CreateProject;
@@ -10,6 +12,7 @@ using Investry.Application.Features.Projects.Commands.UpdateProject;
 using Investry.Application.Features.Projects.Queries.GetAllProjects;
 using Investry.Application.Features.Projects.Queries.GetFounderProjects;
 using Investry.Application.Features.Projects.Queries.GetProjectDetails;
+using Investry.Application.Features.Projects.Queries.SearchProjects;
 using Investry.Application.Models.Media;
 using Investry.Domain.Enums;
 using MediatR;
@@ -67,7 +70,11 @@ namespace Investry.API.Controllers
         [HttpGet("{id}/details")]
         public async Task<IActionResult> GetProject(Guid id)
         {
-            var query = new GetProjectDetailsQuery(id);
+            var query = new GetProjectDetailsQuery(id)
+            {
+                UserId = User.Identity?.IsAuthenticated == true ? User.FindFirstValue(CustomClaimTypes.Uid) : null,
+                IsAdministrator = User.IsInRole("Administrator")
+            };
             return (await _mediator.Send(query)).ToApiResponse();
         }
 
@@ -94,6 +101,11 @@ namespace Investry.API.Controllers
         [ProducesResponseType(typeof(Result<List<ProjectSummaryDto>>), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetAllProjects()
             => (await _mediator.Send(new GetAllProjectsQuery())).ToApiResponse();
+
+        [HttpGet("search")]
+        [ProducesResponseType(typeof(ApiResponse<PagedResult<ProjectSummaryDto>>), StatusCodes.Status200OK)]
+        public async Task<IActionResult> SearchProjects([FromQuery] SearchProjectsQuery query, CancellationToken cancellationToken)
+            => (await _mediator.Send(query, cancellationToken)).ToApiResponse();
 
         [HttpDelete("{id}")]
         [Authorize(Roles = "Founder")]

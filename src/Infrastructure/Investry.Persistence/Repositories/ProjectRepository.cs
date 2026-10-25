@@ -3,15 +3,33 @@ using Investry.Application.Features.Admin.Queries.GetAdminProjects;
 using Investry.Application.Features.Projects.Queries.GetAllProjects;
 using Investry.Application.Features.Projects.Queries.GetFounderProjects;
 using Investry.Application.Features.Projects.Queries.GetProjectDetails;
+using Investry.Application.Features.Projects.Queries.SearchProjects;
+using Investry.Application.Common.Models;
 using Investry.Domain.Entities;
 using Investry.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace Investry.Persistence.Repositories
 {
     public class ProjectRepository : Repository<Project>, IProjectRepository
     {
         private readonly InvestryDbContext _dbContext;
+        private static readonly Expression<Func<Project, ProjectSummaryDto>> SummaryProjection = project => new ProjectSummaryDto
+        {
+            Id = project.Id,
+            FounderId = project.FounderId,
+            Title = project.Title,
+            ShortDescription = project.ShortDescription,
+            FundingModel = project.FundingModel.ToString(),
+            TargetAmount = project.TargetAmount,
+            CurrentAmount = project.CurrentAmount,
+            ProjectStatus = project.ProjectStatus.ToString(),
+            EndDate = project.EndDate,
+            CoverImageUrl = project.Media.FirstOrDefault(media => media.IsCover).MediaUrl,
+            Category = project.Categories.FirstOrDefault().Name
+        };
+
         public ProjectRepository(InvestryDbContext dbContext) : base(dbContext)
         {
             _dbContext = dbContext;
@@ -86,24 +104,41 @@ namespace Investry.Persistence.Repositories
         public async Task<IReadOnlyList<ProjectSummaryDto>> GetAllProjectsSummaryAsync()
         {
             return await _dbContext.Projects
-            .AsNoTracking()
-            .Where(p => p.ProjectStatus == ProjectStatus.Published)
-            .OrderByDescending(p => p.CreatedAt)
-            .Select(p => new ProjectSummaryDto
-            {
-                Id = p.Id,
-                FounderId = p.FounderId,
-                Title = p.Title,
-                ShortDescription = p.ShortDescription,
-                FundingModel = p.FundingModel.ToString(),
-                TargetAmount = p.TargetAmount,
-                CurrentAmount = p.CurrentAmount,
-                ProjectStatus = p.ProjectStatus.ToString(),
-                EndDate = p.EndDate,
-                CoverImageUrl = p.Media.FirstOrDefault(m => m.IsCover).MediaUrl,
-                Category = p.Categories.FirstOrDefault().Name
-            })
-            .ToListAsync();
+                .AsNoTracking()
+                .Where(project => project.ProjectStatus == ProjectStatus.Published)
+                .OrderByDescending(project => project.CreatedAt)
+                .Select(SummaryProjection)
+                .ToListAsync();
+        }
+
+        public async Task<PagedResult<ProjectSummaryDto>> SearchProjectsAsync(SearchProjectsQuery request, CancellationToken cancellationToken)
+        {
+            var query = GetFilteredPublishedProjects(request);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var projects = await query
+                .OrderByDescending(project => project.CreatedAt)
+                .ThenBy(project => project.Id)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(SummaryProjection)
+                .ToListAsync(cancellationToken);
+
+            return new PagedResult<ProjectSummaryDto>(projects, totalCount, request.Page, request.PageSize);
+        }
+
+        private IQueryable<Project> GetFilteredPublishedProjects(SearchProjectsQuery request)
+        {
+            var query = _dbContext.Projects.AsNoTracking()
+                .Where(project => project.ProjectStatus == ProjectStatus.Published);
+            var search = request.Search?.Trim();
+            if (!string.IsNullOrEmpty(search))
+                query = query.Where(project => project.Title.Contains(search) || project.ShortDescription.Contains(search));
+            if (request.CategoryId.HasValue)
+                query = query.Where(project => project.Categories.Any(category => category.Id == request.CategoryId.Value));
+            if (request.FundingModel.HasValue)
+                query = query.Where(project => project.FundingModel == request.FundingModel.Value);
+
+            return query;
         }
 
         public async Task<IReadOnlyList<AdminProjectDto>> GetAdminProjectsAsync(ProjectStatus? status)
